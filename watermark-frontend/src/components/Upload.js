@@ -41,7 +41,8 @@ export default function UploadButton() {
   const handleChange = function(e) {
     e.preventDefault();
     if (e.target.files && e.target.files[0]) {
-      // handleFiles(e.target.files);
+        const newFiles = Array.from(e.target.files);
+        setUploadedFiles((prevFiles) => [...prevFiles, ...newFiles]);
     }
   };
   
@@ -58,7 +59,7 @@ export default function UploadButton() {
     // Add logic for conversion
     console.log('Converting files:', uploadedFiles);
     // Clear uploaded files after conversion
-    
+
     setUploadedFiles([]);
   };
   
