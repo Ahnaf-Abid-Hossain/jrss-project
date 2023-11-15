@@ -1,6 +1,6 @@
 import React from 'react';
 import Button from '@mui/material/Button';
-
+import axios from 'axios';
 import '../css/Upload.css';
 
 
@@ -23,6 +23,26 @@ export default function UploadButton() {
       setDragActive(false);
     }
   };
+
+  const handleUpload = async () => {
+    const formData = new FormData();
+
+    // Append each file to the FormData object with the same field name
+    uploadedFiles.forEach((file, index) => {
+      formData.append(`file[${index}]`, file);
+    });
+    console.log("formData", formData);
+    try {
+        await axios.post('http://127.0.0.1:5000/upload', formData, {
+            headers: {
+                'Content-Type': 'multipart/form-data',
+            },
+        });
+        alert('File uploaded successfully');
+    } catch (error) {
+        console.error('Error uploading file:', error);
+    }
+};
   
   // triggers when file is dropped
   const handleDrop = function(e) {
@@ -34,6 +54,7 @@ export default function UploadButton() {
     if (e.dataTransfer.files && e.dataTransfer.files[0]) {
         const newFiles = Array.from(e.dataTransfer.files);
         setUploadedFiles((prevFiles) => [...prevFiles, ...newFiles]);
+        handleUpload();
     }
   };
   
@@ -75,8 +96,8 @@ export default function UploadButton() {
             </label>
             { dragActive && <div id="drag-file-element" onDragEnter={handleDrag} onDragLeave={handleDrag} onDragOver={handleDrag} onDrop={handleDrop}></div> }
         </form>
-        {(
-        <div>
+       {/* there is some error with the coe below */}
+        {/* <div>
           <h2>Uploaded Files</h2>
           <table>
             <thead>
@@ -97,8 +118,7 @@ export default function UploadButton() {
             </tbody>
           </table>
           <Button onClick={handleConvert}>Convert</Button>
-        </div>
-      )}
+        </div> */}
     </div>
   );
   }
