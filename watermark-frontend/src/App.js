@@ -9,6 +9,7 @@ import {
 
 import Upload from './components/Upload';
 import Header from './components/Header';
+import Hello from './components/Hello';
 
 function App() {
   return (
@@ -16,7 +17,8 @@ function App() {
       <Header />
       <BrowserRouter>
           <Routes>       
-              <Route path="/" element={<Upload />} />
+              <Route path="/app" element={<Upload />} />
+              <Route path="/hello" element={<Hello />} />
           </Routes>
       </BrowserRouter>
 
