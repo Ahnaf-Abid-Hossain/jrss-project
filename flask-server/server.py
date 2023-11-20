@@ -106,7 +106,7 @@ def modify_docx(file_path):
         paragraph.text = re.sub(email_pattern, '', paragraph.text)
 
     # Save the modified document
-    doc.save('modified_' + file_path)
+    doc.save('./uploads/modified_document.docx')
 
 
 @app.route('/upload', methods=['POST'])
@@ -115,14 +115,25 @@ def upload_file():
 
     if len(request.files) == 0:
         return jsonify({'error': 'No selected file'})
+    
+
+    fileNames = []
 
     for reqFiles in request.files:
         file = request.files[reqFiles]
         filename = os.path.join(app.config['UPLOAD_FOLDER'], file.filename)
         file.save(filename)
-        print(filename)
-        return jsonify({'message': 'File uploaded successfully'})
-    print("start4")
+        fileNames.append(filename)
+        
+    
+    
+    print("after upload")
+    for name in fileNames:
+        modify_docx(name)
+        print("modified")
+
+    return jsonify({'message': 'File uploaded successfully'})
+
 
 if __name__ == '__main__':
     app.run(debug=True)
