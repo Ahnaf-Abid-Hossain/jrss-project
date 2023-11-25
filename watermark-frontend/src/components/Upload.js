@@ -36,22 +36,28 @@ export default function UploadButton() {
 
     // Append each file to the FormData object with the same field name
     uploadedFiles.forEach((file, index) => {
-      formData.append(`${index}`, file.file);
+      formData.append(`${index}`, file.file); // failed here because it is unable to retrieve file
+      
+      const updateTableStatus = uploadedFiles.map((file, i) => {
+        if(i == index) {
+          return { ...file, status: "Completed"};
+        }
+      });
+      setUploadedFiles(updateTableStatus);
     });
+
     console.log("Form data: " + formData);
     try {
         let response = await axios.post('http://127.0.0.1:8000/upload', formData, {
             headers: {
               
                 'Content-Type': 'multipart/form-data',
-
-
             },
             responseType: 'blob', 
         }).then(response => {
           console.log("Response: " + JSON.stringify(response));
           // Create a Blob from the response data
-          const blob = new Blob([response.data], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
+          const blob = new Blob([response.data], { type: 'application/zip' });
 
           // Create a URL for the Blob
           const url = window.URL.createObjectURL(blob);
@@ -59,7 +65,7 @@ export default function UploadButton() {
           // Create a link and click it to trigger the download
           const a = document.createElement('a');
           a.href = url;
-          a.download = 'modified_document.docx';
+          a.download = 'modified_resumes.zip';
           a.click();
 
           // Clean up the URL object
@@ -75,6 +81,17 @@ export default function UploadButton() {
         console.error('Error uploading file:', error);
     }
 };
+  const getStatusStyle = (status) => {
+    switch(status) {
+      case "Not uploaded":
+        return {color: 'black'};
+      case "Completed":
+        return {color: 'green', backgroundColor: 'lightgreen'};
+      default: 
+        return {color: 'black'};
+
+    }
+  }
   
   // triggers when file is dropped
   const handleDrop = function(e) {
@@ -86,8 +103,7 @@ export default function UploadButton() {
         const newFiles = Array.from(e.dataTransfer.files);
         const formattedFiles = newFiles.map((newFile) => ({
           file: newFile,
-          status: "Not uploaded",
-          downloadLink: "Not available"
+          status: "Not uploaded"
         }));
         
         setUploadedFiles((prevFiles) => [...prevFiles, ...formattedFiles]);
@@ -101,13 +117,13 @@ export default function UploadButton() {
         const newFiles = Array.from(e.target.files);
         const formattedFiles = newFiles.map((newFile) => ({
           file: newFile,
-          status: "Not uploaded",
-          downloadLink: "Not available"
+          status: "Not uploaded"
         }));
         
         setUploadedFiles((prevFiles) => [...prevFiles, ...formattedFiles]);
     }
   };
+
   
 // triggers the input when the button is clicked
   const onButtonClick = () => {
@@ -122,6 +138,10 @@ export default function UploadButton() {
     console.log('Converting files:', uploadedFiles);
 
     handleUpload();
+  };
+
+  const handleDownload = () => {
+
   };
   
   return (
@@ -144,7 +164,6 @@ export default function UploadButton() {
                 <TableRow>
                   <TableCell>File Name</TableCell>
                   <TableCell>Status</TableCell>
-                  <TableCell>File Link</TableCell>
                   <TableCell>Delete</TableCell>
                 </TableRow>
             </TableHead>
@@ -152,8 +171,7 @@ export default function UploadButton() {
               {uploadedFiles.map((file, index) => (
                 <TableRow key={index}>
                   <TableCell>{file.file.name}</TableCell>
-                  <TableCell>{file.status}</TableCell>
-                  <TableCell>{file.downloadLink}</TableCell>
+                  <TableCell style={getStatusStyle(file.status)}>{file.status}</TableCell>
                   <TableCell>
                     <Button onClick={() => handleDelete(index)}>Delete</Button>
                   </TableCell>
@@ -162,6 +180,7 @@ export default function UploadButton() {
             </TableBody>
           </Table>
         </TableContainer>
+        <Button variant="outlined" onClick={handleDownload} style={{'marginTop': '50px'}}>Download Files</Button>
     </div>
   );
   }

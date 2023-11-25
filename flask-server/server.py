@@ -14,6 +14,7 @@ from docx.oxml import OxmlElement
 import io
 import json
 import zipfile
+import time
 
 
 app = Flask(__name__)
@@ -92,11 +93,9 @@ def modify_docx(file_path):
 
         # Right cell (Slogan)
         ht_right = htable.cell(0, 1).paragraphs[0]
-        # ht_right.alignment =  WD_ALIGN_PARAGRAPH.RIGHT
-        ht_right.alignment = WD_ALIGN_PARAGRAPH.LEFT
+        ht_right.alignment = WD_ALIGN_PARAGRAPH.RIGHT
         slogan_run = ht_right.add_run()
         slogan_run.add_picture("JRSS_FBanner.png", width=Inches(4.5))
-        # header.add_paragraph().add_run().add_picture(image_path, width=Inches(2))
 
     # Regex patterns for phone numbers and emails
     phone_pattern = r'^\s*(?:\+?(\d{1,3}))?[-. ()]*(\d{3})[-. )(]*(\d{3})[-. ]*(\d{4})(?: *x(\d+))?\s*$'  # Adjust this pattern as needed
@@ -109,10 +108,16 @@ def modify_docx(file_path):
 
     # Save the modified document
     # doc.save(f"./modified_{file_path}")
-    print(file_path)
     fileName = file_path.split("/")[1]
-    print(fileName)
-    doc.save(f"./uploads/modified_{fileName}")
+    fileName = fileName.split(".")[0]
+    doc.save(f"./uploads/{fileName}_modified.docx")
+
+    # delete the original file
+    # for cases, where file name ends in modified.docx it will be included in zip file
+    pathToDelete = f"./uploads/{fileName}.docx"
+    if os.path.exists(pathToDelete):
+        os.remove(pathToDelete)
+    
 
 
 @app.route('/upload', methods=['POST'])
@@ -122,57 +127,49 @@ def upload_file():
         return jsonify({'error': 'No selected file'})
     
     fileNames = []
+    current_unix_time = int(time.time())
 
     # save all the files
     for reqFiles in request.files:
         file = request.files[reqFiles]
-        filename = os.path.join(app.config['UPLOAD_FOLDER'], str(reqFiles) + chr(300) + file.filename)
+        filename = os.path.join(app.config['UPLOAD_FOLDER'], f"{current_unix_time}{chr(300)}{str(reqFiles)}{chr(300)}{file.filename}")
         file.save(filename)
         fileNames.append(filename)
+    print("fileNames: ", fileNames)
         
     # modify all the documents
-    for name in fileNames:
-        modify_docx(name)
+    try:
+        for name in fileNames:
+            modify_docx(name)
+    except:
+        return jsonify({'error': 'Error modifying document'})
+    
+        
 
-    # zip all the modified documents
+
     directory = "./uploads"
 
-    with zipfile.ZipFile(f'{directory}/modified_documents.zip', 'w') as zipObj:
+    # create the zip file with all the modified documents
+    with zipfile.ZipFile(f'{directory}/{current_unix_time}_modified_documents.zip', 'w') as zipObj:
         for folderName, subfolders, filenames in os.walk(directory):
             for filename in filenames:
-                if filename.startswith("modified_"):
-                    relative_path = os.path.relpath(os.path.join(folderName, filename), directory)
-                    zipObj.write(os.path.join(folderName, filename), relative_path)
-
-    
-    return  jsonify({'success': 'Files uploaded successfully'})
-    return send_file('./uploads/modified_document.docx', as_attachment=True)
-
-# @app.route('/upload', methods=['POST'])
-# def upload_file():
-#     if len(request.files) == 0:
-#         return jsonify({'error': 'No selected file'})
-    
-#     # print("Keys: " + request.files.keys())
-
-#     fileNames = []
-
-#     for reqFiles in request.files:
-
-#         file = request.files[reqFiles]
-#         filename = os.path.join(app.config['UPLOAD_FOLDER'], file.filename)
-#         file.save(filename)
-#         print("filename: ", filename)
-#         fileNames.append(filename)
-#         print("reqFiles: ", reqFiles)
+                if filename.startswith(f"{current_unix_time}"):
+                    if filename.endswith("modified.docx"):
+                        relative_path = os.path.relpath(os.path.join(folderName, filename), directory)
+                        zipObj.write(os.path.join(folderName, filename), relative_path)
+                    
+                        pathToDelete = os.path.join(folderName, filename)
         
-    
-    
-#     for name in fileNames:
-#         modify_docx(name)
-#         print("modified")
+                        # Check if the file exists to prevent error
+                        if os.path.exists(pathToDelete):
+                            print("Deleting file: ", pathToDelete)
+                            os.remove(pathToDelete)
 
-#     return send_file('./uploads/modified_document.docx', as_attachment=True)
+    
+    # create some sort of background job to delete the files after a certain amount of time
+    # or delete the file after a delay?
+    return send_file(f'./uploads/{current_unix_time}_modified_documents.zip', as_attachment=True)
+
 
 
 if __name__ == '__main__':
