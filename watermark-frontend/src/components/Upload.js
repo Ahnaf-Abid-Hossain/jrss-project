@@ -19,6 +19,7 @@ export default function UploadButton() {
   const inputRef = React.useRef(null);
 
   const [uploadedFiles, setUploadedFiles] = React.useState([]);
+  const [blobUrl, setBlobUrl] = React.useState('');
   
   // handle drag events
   const handleDrag = function(e) {
@@ -31,22 +32,21 @@ export default function UploadButton() {
     }
   };
 
-  const handleUpload = async () => {
+  const handleModify = async () => {
     const formData = new FormData();
 
     // Append each file to the FormData object with the same field name
     uploadedFiles.forEach((file, index) => {
       formData.append(`${index}`, file.file); // failed here because it is unable to retrieve file
-      
-      const updateTableStatus = uploadedFiles.map((file, i) => {
-        if(i == index) {
-          return { ...file, status: "Completed"};
-        }
-      });
-      setUploadedFiles(updateTableStatus);
     });
 
-    console.log("Form data: " + formData);
+    // set all the status modifiecation to completed
+    const updateTableStatus = uploadedFiles.map((file, i) => {
+      return { ...file, status: "Completed"};
+    });
+    setUploadedFiles(updateTableStatus);
+
+
     try {
         let response = await axios.post('http://127.0.0.1:8000/upload', formData, {
             headers: {
@@ -55,27 +55,20 @@ export default function UploadButton() {
             },
             responseType: 'blob', 
         }).then(response => {
-          console.log("Response: " + JSON.stringify(response));
           // Create a Blob from the response data
           const blob = new Blob([response.data], { type: 'application/zip' });
 
           // Create a URL for the Blob
           const url = window.URL.createObjectURL(blob);
-
-          // Create a link and click it to trigger the download
-          const a = document.createElement('a');
-          a.href = url;
-          a.download = 'modified_resumes.zip';
-          a.click();
-
-          // Clean up the URL object
-          window.URL.revokeObjectURL(url);
+          if(blobUrl.length > 0) {
+            window.URL.revokeObjectURL(blobUrl);
+          }
+          setBlobUrl(url);
         })
         .catch(error => {
           console.error('Error downloading .docx file:', error);
         });
 
-        console.log(response);
         alert('File uploaded successfully');
     } catch (error) {
         console.error('Error uploading file:', error);
@@ -135,13 +128,21 @@ export default function UploadButton() {
   };
 
   const handleConvert = () => {
+    console.log('Converting files:', JSON.stringify(uploadedFiles));
     console.log('Converting files:', uploadedFiles);
-
-    handleUpload();
+    handleModify();
   };
 
   const handleDownload = () => {
+    // Create a link and click it to trigger the download
+    const a = document.createElement('a');
+    a.href = blobUrl;
+    a.download = 'modified_resumes.zip';
+    a.click();
+  };
 
+  const handleClear = () => {
+    setUploadedFiles([]);
   };
   
   return (
@@ -156,7 +157,7 @@ export default function UploadButton() {
             </label>
             { dragActive && <div id="drag-file-element" onDragEnter={handleDrag} onDragLeave={handleDrag} onDragOver={handleDrag} onDrop={handleDrop}></div> }
         </form>
-        <Button variant="outlined" onClick={handleConvert} style={{marginTop: '10px'}}>Upload</Button>
+      
         <h2>Uploaded Files</h2>
         <TableContainer component={Paper}>
           <Table sx={{minWidth: 650}} aria-label="simple table">
@@ -180,7 +181,11 @@ export default function UploadButton() {
             </TableBody>
           </Table>
         </TableContainer>
-        <Button variant="outlined" onClick={handleDownload} style={{'marginTop': '50px'}}>Download Files</Button>
+        <div>
+          <Button variant="outlined" onClick={handleConvert} style={{marginTop: '50px'}}>Modify Files</Button>
+          <Button variant="outlined" onClick={handleClear} style={{'marginTop': '50px', marginLeft: '20px'}}>Clear List</Button>
+          <Button variant="outlined" onClick={handleDownload} style={{'marginTop': '50px', marginLeft: '20px'}}>Download Files</Button>
+        </div>
     </div>
   );
   }
