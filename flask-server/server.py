@@ -15,6 +15,7 @@ import io
 import json
 import zipfile
 import time
+import threading
 
 
 app = Flask(__name__)
@@ -117,6 +118,10 @@ def modify_docx(file_path):
     pathToDelete = f"./uploads/{fileName}.docx"
     if os.path.exists(pathToDelete):
         os.remove(pathToDelete)
+
+def schedule_file_deletion(file_path, delay=20):
+    time.sleep(delay)
+    os.remove(file_path)
     
 
 
@@ -135,7 +140,6 @@ def upload_file():
         filename = os.path.join(app.config['UPLOAD_FOLDER'], f"{current_unix_time}{chr(300)}{str(reqFiles)}{chr(300)}{file.filename}")
         file.save(filename)
         fileNames.append(filename)
-    print("fileNames: ", fileNames)
         
     # modify all the documents
     try:
@@ -156,7 +160,8 @@ def upload_file():
                 if filename.startswith(f"{current_unix_time}"):
                     if filename.endswith("modified.docx"):
                         relative_path = os.path.relpath(os.path.join(folderName, filename), directory)
-                        zipObj.write(os.path.join(folderName, filename), relative_path)
+                        splitted_name = relative_path.split(chr(300))
+                        zipObj.write(os.path.join(folderName, filename), splitted_name[-2] + splitted_name[-1])
                     
                         pathToDelete = os.path.join(folderName, filename)
         
@@ -165,6 +170,9 @@ def upload_file():
                             print("Deleting file: ", pathToDelete)
                             os.remove(pathToDelete)
 
+
+    # Schedule the file for deletion after 20 seconds
+    threading.Thread(target=schedule_file_deletion, args=(f'{directory}/{current_unix_time}_modified_documents.zip', 5)).start()
     
     # create some sort of background job to delete the files after a certain amount of time
     # or delete the file after a delay?
