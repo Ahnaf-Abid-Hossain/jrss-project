@@ -24,3 +24,4 @@ yarn-error.log*
 
 venv/
 *.pyc
+node_modules/
