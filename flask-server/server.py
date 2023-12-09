@@ -16,6 +16,8 @@ import json
 import zipfile
 import time
 import threading
+import subprocess
+
 
 
 app = Flask(__name__)
@@ -27,6 +29,18 @@ UPLOAD_FOLDER = 'uploads'
 if not os.path.exists(UPLOAD_FOLDER):
     os.makedirs(UPLOAD_FOLDER)
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+
+
+def convert_to_pdf(file_path):
+    # Define the output PDF file path
+    output_file = file_path.replace('.docx', '.pdf')
+
+    # Run the LibreOffice conversion command
+    soffice_path = '/Applications/LibreOffice.app/Contents/MacOS/soffice'  # Replace with the actual path to soffice
+    command = f'"{soffice_path}" --headless --convert-to pdf --outdir "{os.path.dirname(output_file)}" "{file_path}"'
+    subprocess.run(command, shell=True)
+
+    return output_file
 
 def modify_docx(file_path):
     # Load the document
@@ -40,15 +54,15 @@ def modify_docx(file_path):
         section.different_first_page_header_footer = False
 
         # move everything from header and footer to body
-        # doc.paragraphs[0].insert_paragraph_before("--------------------------------\n")     
-        # for paragraph in header.paragraphs:
-        #     doc.paragraphs[0].insert_paragraph_before(paragraph.text)
-        # doc.paragraphs[0].insert_paragraph_before("Header:")
+        doc.paragraphs[0].insert_paragraph_before("--------------------------------\n")     
+        for paragraph in header.paragraphs:
+            doc.paragraphs[0].insert_paragraph_before(paragraph.text)
+        doc.paragraphs[0].insert_paragraph_before("Header:")
 
-        # doc.paragraphs[0].insert_paragraph_before("--------------------------------\n")
-        # for paragraph in footer.paragraphs:
-        #     doc.paragraphs[0].insert_paragraph_before(paragraph.text)
-        # doc.paragraphs[0].insert_paragraph_before("Footer:")
+        doc.paragraphs[0].insert_paragraph_before("--------------------------------\n")
+        for paragraph in footer.paragraphs:
+            doc.paragraphs[0].insert_paragraph_before(paragraph.text)
+        doc.paragraphs[0].insert_paragraph_before("Footer:")
 
         # Clear header and footer
         for paragraph in header.paragraphs:
@@ -113,6 +127,12 @@ def modify_docx(file_path):
     fileName = fileName.split(".")[0]
     doc.save(f"./uploads/{fileName}_modified.docx")
 
+    convert_to_pdf(f"./uploads/{fileName}_modified.docx")
+
+    # Convert to PDF
+    pdf_file_path = f"./uploads/{fileName}_modified.pdf"
+
+
     # delete the original file
     # for cases, where file name ends in modified.docx it will be included in zip file
     pathToDelete = f"./uploads/{fileName}.docx"
@@ -158,10 +178,11 @@ def upload_file():
         for folderName, subfolders, filenames in os.walk(directory):
             for filename in filenames:
                 if filename.startswith(f"{current_unix_time}"):
-                    if filename.endswith("modified.docx"):
+                    if filename.endswith("modified.docx") or filename.endswith("modified.pdf"):
+
                         relative_path = os.path.relpath(os.path.join(folderName, filename), directory)
                         splitted_name = relative_path.split(chr(300))
-                        zipObj.write(os.path.join(folderName, filename), splitted_name[-2] + splitted_name[-1])
+                        zipObj.write(os.path.join(folderName, filename), splitted_name[-2] + chr(300) + splitted_name[-1])
                     
                         pathToDelete = os.path.join(folderName, filename)
         
